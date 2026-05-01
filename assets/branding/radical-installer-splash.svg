@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-label="RADICAL installer splash background">
+  <defs>
+    <radialGradient id="centerGlow" cx="45%" cy="48%" r="65%">
+      <stop offset="0%" stop-color="#0d5c94" stop-opacity="0.72"/>
+      <stop offset="58%" stop-color="#05396a" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#001a3a"/>
+    </radialGradient>
+    <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#063a70"/>
+      <stop offset="0.48" stop-color="#0a4f82"/>
+      <stop offset="1" stop-color="#021530"/>
+    </linearGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <pattern id="scan" width="6" height="6" patternUnits="userSpaceOnUse">
+      <path d="M0 0H6" stroke="#ffffff" stroke-opacity="0.025" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#blueWash)"/>
+  <rect width="1920" height="1080" fill="url(#centerGlow)"/>
+  <rect width="1920" height="1080" fill="url(#scan)"/>
+
+  <!-- upper-left HUD rings -->
+  <g transform="translate(250 210)" opacity="0.42" fill="none" stroke="#20a8ff" stroke-width="3">
+    <circle r="250" opacity="0.35"/>
+    <circle r="315" opacity="0.25"/>
+    <path d="M-315 0A315 315 0 0 1 -90 -302"/>
+    <path d="M90 -302A315 315 0 0 1 315 0" opacity="0.5"/>
+    <path d="M-250 0A250 250 0 0 0 -70 240" opacity="0.45"/>
+    <path d="M92 232A250 250 0 0 0 250 0" opacity="0.28"/>
+    <path d="M-30 315V210H70" opacity="0.45"/>
+  </g>
+
+  <!-- stylized R logo -->
+  <g transform="translate(110 90)" filter="url(#softGlow)">
+    <path d="M20 0H205C292 0 340 42 340 115C340 168 309 205 255 220L354 340H260L175 230H96V340H20Z" fill="none" stroke="#dff8ff" stroke-width="13" stroke-linejoin="round"/>
+    <path d="M96 66H202C236 66 258 83 258 113C258 144 236 160 202 160H96Z" fill="none" stroke="#7de8ff" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M96 36V310M55 35V315M135 33V92M135 196V310M185 230L270 335" stroke="#8af0ff" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <g fill="#bdf8ff">
+      <circle cx="55" cy="78" r="6"/><circle cx="55" cy="138" r="6"/><circle cx="55" cy="226" r="6"/><circle cx="135" cy="92" r="6"/><circle cx="135" cy="196" r="6"/><circle cx="224" cy="111" r="6"/><circle cx="310" cy="254" r="6"/>
+    </g>
+    <path d="M22 386H280" stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <text x="20" y="410" font-family="Orbitron, Eurostile, Bank Gothic, Arial, sans-serif" font-size="64" font-weight="700" letter-spacing="4" fill="#ffffff" filter="url(#textShadow)">RADICAL</text>
+  </g>
+
+  <!-- upper-right network mesh -->
+  <g opacity="0.62" stroke="#24a8ff" stroke-width="2" fill="#66d9ff" filter="url(#softGlow)">
+    <path d="M1040 86L1210 42L1360 132L1510 80L1690 140L1830 74M1210 42L1280 240L1510 80L1645 330L1830 74M1040 86L1128 260L1280 240L1450 390L1645 330L1845 470M1128 260L1330 350L1450 390L1560 560L1845 470M1280 240L1450 390L1510 80M1330 350L1645 330L1560 560L1730 650" fill="none"/>
+    <circle cx="1040" cy="86" r="5"/><circle cx="1210" cy="42" r="6"/><circle cx="1360" cy="132" r="5"/><circle cx="1510" cy="80" r="6"/><circle cx="1690" cy="140" r="5"/><circle cx="1830" cy="74" r="6"/><circle cx="1128" cy="260" r="5"/><circle cx="1280" cy="240" r="6"/><circle cx="1450" cy="390" r="7"/><circle cx="1645" cy="330" r="7"/><circle cx="1845" cy="470" r="6"/><circle cx="1560" cy="560" r="5"/><circle cx="1730" cy="650" r="4"/>
+  </g>
+
+  <!-- lower-left circuit traces -->
+  <g transform="translate(0 790)" opacity="0.52" fill="none" stroke="#18a5ff" stroke-width="3">
+    <path d="M0 40H140L210-30H420"/>
+    <path d="M0 80H165L230 15H505"/>
+    <path d="M0 120H180L260 200H470"/>
+    <path d="M0 160H205L300 255H560"/>
+    <path d="M0 205H190L250 265V350"/>
+    <circle cx="420" cy="-30" r="5" fill="#18a5ff"/><circle cx="505" cy="15" r="5" fill="#18a5ff"/><circle cx="470" cy="200" r="5" fill="#18a5ff"/><circle cx="560" cy="255" r="5" fill="#18a5ff"/>
+  </g>
+
+  <!-- lower-right branding -->
+  <g transform="translate(1035 780)" filter="url(#textShadow)">
+    <text x="0" y="100" font-family="Orbitron, Eurostile, Bank Gothic, Arial, sans-serif" font-size="135" font-weight="800" letter-spacing="6" fill="#ffffff">RADICAL</text>
+    <text x="490" y="185" font-family="Georgia, 'Times New Roman', serif" font-size="70" font-weight="700" fill="#ffffff">THP-labs</text>
+    <path d="M870 205C895 205 910 190 910 165C910 190 925 205 950 205C925 205 910 220 910 245C910 220 895 205 870 205Z" fill="#e9f7ff" filter="url(#softGlow)"/>
+  </g>
+
+  <!-- central quiet overlay zone intentionally left clear -->
+</svg>
