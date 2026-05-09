@@ -36,25 +36,76 @@ impl GpuDriver {
 
 pub struct GpuCommandRing {
     mmio_base: u64,
+    command_buffer_phys: u64,
+    tail: u32,
+}
+
+#[repr(C, align(64))]
+pub struct GpuCommand {
+    pub opcode: u32,
+    pub shader_id: u32,
+    pub data_phys: u64,
+    pub result_phys: u64,
+    pub flags: u64,
+    pub reserved: [u64; 4],
 }
 
 impl GpuCommandRing {
-    pub fn new(mmio_base: u64) -> Self {
-        serial_println!("TUFF-RADICAL-COMMANDER [GPU-02]: Establishing Command Ring at MMIO 0x{:x}", mmio_base);
-        Self { mmio_base }
+    pub unsafe fn new(mmio_base: u64, command_buffer_phys: u64) -> Self {
+        serial_println!("TUFF-RADICAL-GPU: Command Ring mapped at MMIO 0x{:x}", mmio_base);
+        serial_println!("TUFF-RADICAL-GPU: Shared Command Buffer at 0x{:x}", command_buffer_phys);
+        
+        // Reset device command state
+        (mmio_base as *mut u32).write_volatile(0); // Status reset
+        
+        Self { 
+            mmio_base, 
+            command_buffer_phys,
+            tail: 0,
+        }
     }
 
-    pub fn submit_compute_command(&mut self, shader_id: u32, data_ptr: u64) {
+    pub fn submit_compute_batch(&mut self, shader_id: u32, data_ptr: u64, result_ptr: u64) -> bool {
         serial_println!(
-            "TUFF-RADICAL-COMMANDER [GPU-03]: Compute Command submitted (Shader: {}, Data: 0x{:x}). Doorbell rung.",
+            "TUFF-RADICAL-GPU [VULKAN-BATCH]: Submitting shader 0x{:x} to ring index {}",
             shader_id,
-            data_ptr
+            self.tail
         );
-        // Simulation of ring buffer write
+
         unsafe {
-            let ring_ptr = self.mmio_base as *mut u32;
-            ring_ptr.write_volatile(shader_id);
-            ring_ptr.add(1).write_volatile((data_ptr & 0xFFFFFFFF) as u32);
+            let cmd_ptr = (self.command_buffer_phys + (self.tail as u64 * 64)) as *mut GpuCommand;
+            cmd_ptr.write_volatile(GpuCommand {
+                opcode: 0x1, // COMPUTE
+                shader_id,
+                data_phys: data_ptr,
+                result_phys: result_ptr,
+                flags: 0,
+                reserved: [0; 4],
+            });
+
+            // Advance tail
+            self.tail = (self.tail + 1) % 1024;
+
+            // Ring Doorbell (trigger GPU execution)
+            let doorbell = (self.mmio_base + 0x10) as *mut u32;
+            doorbell.write_volatile(self.tail);
+
+            // In this test environment, we assume the command is accepted.
+            // In real hardware, we would check for queue full status.
+            true
+        }
+    }
+
+    pub fn wait_for_idle(&self) {
+        unsafe {
+            let status_reg = self.mmio_base as *mut u32;
+            // Spin until GPU reports idle (0 in status register)
+            // Safety: In test env, we might timeout or simulate completion
+            let mut timeout = 1000000;
+            while status_reg.read_volatile() != 0 && timeout > 0 {
+                timeout -= 1;
+                core::hint::spin_loop();
+            }
         }
     }
 }

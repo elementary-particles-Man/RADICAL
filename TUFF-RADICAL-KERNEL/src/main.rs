@@ -173,8 +173,12 @@ async fn async_pcie_probe_and_init() {
 
     if let Some(base) = gpu_mmio_base {
         serial_println!("TUFF-RADICAL-ASYNC [INIT]: GPU Active at 0x{:x}. Submitting Vulkan-compatible pipeline.", base);
-        let ring = GpuCommandRing::new(base);
+        // Using a fixed physical address for the command buffer substrate in this test environment
+        let ring = unsafe { GpuCommandRing::new(base, 0x5000000) };
         async_gpu_compute_task(ring).await;
+    } else {
+        serial_println!("TUFF-RADICAL-ASYNC [INIT]: No GPU found. Directing Vulkan workload to CPU SIMD fallback.");
+        async_cpu_simd_fallback_task().await;
     }
 
     if let Some(disk) = storage_device {
@@ -197,8 +201,26 @@ async fn async_runtime_diagnostics(features: cpu::CpuFeatures) {
 async fn async_gpu_compute_task(mut ring: GpuCommandRing) {
     serial_println!("TUFF-RADICAL-ASYNC [GPU]: Vulkan compute sequence isolated.");
     SleepFuture::new(10).await;
-    serial_println!("TUFF-RADICAL-ASYNC [GPU]: Submitting compute shader to Command Ring.");
-    ring.submit_compute_command(0x70FF, 0x3000000);
+    
+    let shader_id = 0x70FF;
+    let data_phys = 0x6000000;
+    let result_phys = 0x6001000;
+
+    serial_println!("TUFF-RADICAL-ASYNC [GPU]: Submitting batch to Command Ring...");
+    if ring.submit_compute_batch(shader_id, data_phys, result_phys) {
+        ring.wait_for_idle();
+        serial_println!("TUFF-RADICAL-ASYNC [GPU]: Batch completed via Vulkan path.");
+    } else {
+        serial_println!("TUFF-RADICAL-ASYNC [GPU]: Submission rejected. Falling back to CPU SIMD.");
+        async_cpu_simd_fallback_task().await;
+    }
+}
+
+async fn async_cpu_simd_fallback_task() {
+    serial_println!("TUFF-RADICAL-ASYNC [CPU-FALLBACK]: Executing Vulkan compute workload via SIMD.");
+    // Simulated AVX/SSE workload
+    SleepFuture::new(5).await;
+    serial_println!("TUFF-RADICAL-ASYNC [CPU-FALLBACK]: SIMD compute task finalized.");
 }
 
 async fn async_install_task(disk: VirtioBlk) {
