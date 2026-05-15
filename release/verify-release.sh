@@ -95,6 +95,7 @@ check_gpgpu_dependencies() {
 
 check_bringup_entrypoint() {
   local script="$release_root/bringup/radical-bringup.sh"
+  local service="$release_root/bringup/radical-bringup.service"
 
   if [[ -x "$script" ]]; then
     pass "bring-up entrypoint is executable: release/bringup/radical-bringup.sh"
@@ -102,9 +103,22 @@ check_bringup_entrypoint() {
     fail "bring-up entrypoint missing or not executable: release/bringup/radical-bringup.sh"
   fi
 
+  if [[ -f "$service" ]]; then
+    pass "bring-up service exists: release/bringup/radical-bringup.service"
+  else
+    fail "bring-up service missing: release/bringup/radical-bringup.service"
+  fi
+
   bash -n "$script" || fail "bash syntax failed: release/bringup/radical-bringup.sh"
+  rg -n 'ExecStart=/usr/local/sbin/radical-bringup' "$service" >/dev/null || fail "bring-up service must launch radical-bringup"
+  rg -n 'WantedBy=multi-user.target' "$service" >/dev/null || fail "bring-up service must be wanted by multi-user.target"
+  rg -n 'Conflicts=.*display-manager.service.*sddm.service' "$service" >/dev/null || fail "bring-up service must conflict with display-manager and sddm"
+  rg -n 'TARGET_DISK' "$script" >/dev/null || fail "bring-up script must check TARGET_DISK"
+  rg -n 'RUN_INSTALL.*1|1.*RUN_INSTALL' "$script" >/dev/null || fail "bring-up script must require RUN_INSTALL=1"
+  rg -n 'installer/radical-installer.sh' "$script" >/dev/null || fail "bring-up script must conditionally launch installer"
   rg -n 'RADICAL Bring-up' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must list RADICAL Bring-up entrypoint"
   rg -n 'script = "bringup/radical-bringup.sh"' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must wire radical-bringup.sh"
+  rg -n 'service = "bringup/radical-bringup.service"' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must wire radical-bringup.service"
 }
 
 check_installer_entrypoint() {
@@ -139,9 +153,9 @@ check_boot_media_defaults() {
   repo_root="$(cd -- "$release_root/.." && pwd)"
 
   if rg -n 'LB_BOOTAPPEND_LIVE=.*radical\.installer=1.*systemd\.unit=multi-user\.target' "$repo_root/config/binary" >/dev/null; then
-    pass "live boot append defaults to RADICAL installer on multi-user.target"
+    pass "live boot append keeps RADICAL marker on multi-user.target"
   else
-    fail "live boot append must default to radical.installer=1 and multi-user.target"
+    fail "live boot append must include radical.installer=1 and multi-user.target"
   fi
 
   if rg -n 'systemctl set-default multi-user.target' "$repo_root/config/hooks" >/dev/null \
@@ -151,11 +165,48 @@ check_boot_media_defaults() {
     fail "live-build hooks must set multi-user.target and mask display-manager/sddm"
   fi
 
+  if rg -n 'systemctl enable radical-bringup.service' "$repo_root/config/hooks" >/dev/null; then
+    pass "root live-build hooks default-enable radical-bringup.service"
+  else
+    fail "root live-build hooks must default-enable radical-bringup.service"
+  fi
+
+  local installer_enable_pattern="systemctl enable radical-""installer.service"
+  if rg -n "$installer_enable_pattern" "$repo_root/config/hooks" >/dev/null; then
+    fail "radical-installer.service must not be default-enabled by root live-build hooks"
+  else
+    pass "radical-installer.service is not default-enabled by root live-build hooks"
+  fi
+
   if rg -n 'RADICAL Bring-up|RADICAL Installer' "$repo_root/config/hooks" "$repo_root/config/binary" >/dev/null; then
     pass "boot menu/config labels use RADICAL Bring-up or RADICAL Installer"
   else
     fail "boot menu/config labels must identify RADICAL Bring-up or RADICAL Installer"
   fi
+}
+
+check_live_build_configure() {
+  local repo_root configure
+  repo_root="$(cd -- "$release_root/.." && pwd)"
+  configure="$repo_root/projects/tuff-linux-distro/build/live-build/configure-live-build.sh"
+
+  [[ -f "$configure" ]] || { fail "missing live-build configure script"; return; }
+  bash -n "$configure" || fail "bash syntax failed: projects/tuff-linux-distro/build/live-build/configure-live-build.sh"
+  rg -n 'usr/local/sbin/radical-bringup' "$configure" >/dev/null || fail "configure-live-build must install radical-bringup into /usr/local/sbin"
+  rg -n 'radical-bringup.service' "$configure" >/dev/null || fail "configure-live-build must install radical-bringup.service"
+  rg -n 'systemctl enable radical-bringup.service' "$configure" >/dev/null || fail "configure-live-build hook must enable radical-bringup.service"
+  local installer_default_pattern="systemctl enable radical-""installer.service|ln .*radical-""installer.service"
+  if rg -n "$installer_default_pattern" "$configure" >/dev/null; then
+    fail "configure-live-build must not default-enable radical-installer.service"
+  else
+    pass "configure-live-build does not default-enable radical-installer.service"
+  fi
+
+  local required_component
+  for required_component in install.sh MANIFEST.toml kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO bringup installer uninstaller; do
+    rg -n "(^|[[:space:]])${required_component}($|[[:space:]])" "$configure" >/dev/null || fail "configure-live-build must include release component: ${required_component}"
+  done
+  rg -n 'target|out|MANIFEST.generated.toml' "$configure" >/dev/null || fail "configure-live-build must exclude generated release artifacts"
 }
 
 check_release_name_boundaries() {
@@ -217,6 +268,7 @@ main() {
   check_bringup_entrypoint
   check_installer_entrypoint
   check_boot_media_defaults
+  check_live_build_configure
   check_release_name_boundaries
   check_shell_syntax
   cargo_check_if_present rad-gpgpu check

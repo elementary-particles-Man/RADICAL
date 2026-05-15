@@ -2,7 +2,14 @@
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-release_root="$(cd -- "$script_dir/.." && pwd)"
+source_release_root="$(cd -- "$script_dir/.." && pwd)"
+if [[ -n "${RADICAL_RELEASE_ROOT:-}" ]]; then
+  release_root="$RADICAL_RELEASE_ROOT"
+elif [[ -d /opt/radical/release && -x /opt/radical/release/installer/radical-installer.sh ]]; then
+  release_root=/opt/radical/release
+else
+  release_root="$source_release_root"
+fi
 repo_root="$(cd -- "$release_root/.." && pwd)"
 
 sha256_file() {

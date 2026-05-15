@@ -35,9 +35,9 @@ lb config \
     --binary-images iso-hybrid \
     --bootloaders "syslinux,grub-efi" \
     --loadlin false \
-    --iso-application "RADICAL Installer" \
+    --iso-application "RADICAL Bring-up / Installer" \
     --iso-publisher "RADICAL" \
-    --iso-volume "RADICAL-INSTALLER" \
+    --iso-volume "RADICAL-BRINGUP" \
     --memtest none \
     --linux-packages "linux-image" \
     --linux-flavours "amd64" \
@@ -56,21 +56,52 @@ OVERLAY_STAGE="$("${PREPARE_OVERLAY}")"
 mkdir -p config/includes.chroot
 cp -a "${OVERLAY_STAGE}/." config/includes.chroot/
 
-# RADICAL installer entrypoint: the live image is only a carrier.
-if [ ! -x "${RELEASE_DIR}/install.sh" ]; then
-    echo "[ERROR] Missing canonical RADICAL install backend: ${RELEASE_DIR}/install.sh"
+# RADICAL bring-up entrypoint: the live image boots diagnostics first.
+required_release_paths=(
+    install.sh
+    MANIFEST.toml
+    kernel
+    rad-gpgpu
+    TUFF-Xwin
+    BOOT-RADICAL
+    TUFF-KAIRO
+    bringup
+    installer
+    uninstaller
+)
+for release_path in "${required_release_paths[@]}"; do
+    if [ ! -e "${RELEASE_DIR}/${release_path}" ]; then
+        echo "[ERROR] Missing canonical RADICAL release path: ${RELEASE_DIR}/${release_path}"
+        exit 1
+    fi
+done
+if [ ! -x "${RELEASE_DIR}/bringup/radical-bringup.sh" ]; then
+    echo "[ERROR] Missing RADICAL bring-up wrapper: ${RELEASE_DIR}/bringup/radical-bringup.sh"
     exit 1
 fi
 if [ ! -x "${RELEASE_DIR}/installer/radical-installer.sh" ]; then
     echo "[ERROR] Missing RADICAL installer wrapper: ${RELEASE_DIR}/installer/radical-installer.sh"
     exit 1
 fi
-install -D -m 0755 "${RELEASE_DIR}/install.sh" config/includes.chroot/opt/radical/release/install.sh
+
+release_include_root=config/includes.chroot/opt/radical/release
+mkdir -p "${release_include_root}"
+install -D -m 0755 "${RELEASE_DIR}/install.sh" "${release_include_root}/install.sh"
+install -D -m 0644 "${RELEASE_DIR}/MANIFEST.toml" "${release_include_root}/MANIFEST.toml"
+for component in kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO bringup installer uninstaller; do
+    rm -rf "${release_include_root}/${component}"
+    cp -a "${RELEASE_DIR}/${component}" "${release_include_root}/${component}"
+done
+find "${release_include_root}" -type d \( -name target -o -name out \) -prune -exec rm -rf {} +
+find "${release_include_root}" -type f -name MANIFEST.generated.toml -delete
+
+install -D -m 0755 "${RELEASE_DIR}/bringup/radical-bringup.sh" config/includes.chroot/usr/local/sbin/radical-bringup
 install -D -m 0755 "${RELEASE_DIR}/installer/radical-installer.sh" config/includes.chroot/usr/local/sbin/radical-installer
+install -D -m 0644 "${RELEASE_DIR}/bringup/radical-bringup.service" config/includes.chroot/etc/systemd/system/radical-bringup.service
 install -D -m 0644 "${RELEASE_DIR}/installer/radical-installer.service" config/includes.chroot/etc/systemd/system/radical-installer.service
-install -D -m 0644 "${RELEASE_DIR}/installer/README.md" config/includes.chroot/opt/radical/release/installer/README.md
 mkdir -p config/includes.chroot/etc/systemd/system/multi-user.target.wants
-ln -s ../radical-installer.service config/includes.chroot/etc/systemd/system/multi-user.target.wants/radical-installer.service
+ln -s ../radical-bringup.service config/includes.chroot/etc/systemd/system/multi-user.target.wants/radical-bringup.service
+rm -f config/includes.chroot/etc/systemd/system/multi-user.target.wants/radical-installer.service
 ln -sfn /lib/systemd/system/multi-user.target config/includes.chroot/etc/systemd/system/default.target
 ln -sfn /dev/null config/includes.chroot/etc/systemd/system/display-manager.service
 ln -sfn /dev/null config/includes.chroot/etc/systemd/system/sddm.service
@@ -80,7 +111,7 @@ cat > config/hooks/normal/0900-radical-installer.hook.chroot <<'HOOK_CHROOT'
 #!/bin/sh
 set -eu
 systemctl set-default multi-user.target
-systemctl enable radical-installer.service
+systemctl enable radical-bringup.service
 systemctl mask display-manager.service sddm.service || true
 HOOK_CHROOT
 chmod 0755 config/hooks/normal/0900-radical-installer.hook.chroot
@@ -93,11 +124,11 @@ patch_file() {
     file="$1"
     [ -f "$file" ] || return 0
     sed -i \
-        -e 's/Debian GNU\/Linux Live/RADICAL Installer/g' \
-        -e 's/Debian Live/RADICAL Installer/g' \
-        -e 's/Live system/RADICAL Installer/g' \
-        -e 's/Start installer/RADICAL Installer/g' \
-        -e 's/Graphical install/RADICAL Installer/g' \
+        -e 's/Debian GNU\/Linux Live/RADICAL Bring-up / RADICAL Installer/g' \
+        -e 's/Debian Live/RADICAL Bring-up / RADICAL Installer/g' \
+        -e 's/Live system/RADICAL Bring-up / RADICAL Installer/g' \
+        -e 's/Start installer/RADICAL Bring-up / RADICAL Installer/g' \
+        -e 's/Graphical install/RADICAL Bring-up / RADICAL Installer/g' \
         "$file"
     if grep -q 'boot=live' "$file" && ! grep -q 'radical.installer=1' "$file"; then
         sed -i 's/boot=live/boot=live radical.installer=1 systemd.unit=multi-user.target/g' "$file"

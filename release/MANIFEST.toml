@@ -51,6 +51,7 @@ required = true
 name = "RADICAL Bring-up"
 origin = "RADICAL"
 script = "bringup/radical-bringup.sh"
+service = "bringup/radical-bringup.service"
 default_target = "multi-user.target"
 boot_marker = "radical.installer=1"
 

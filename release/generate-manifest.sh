@@ -32,6 +32,7 @@ main() {
     printf 'name = "RADICAL Bring-up"\n'
     printf 'origin = "RADICAL"\n'
     printf 'script = "bringup/radical-bringup.sh"\n'
+    printf 'service = "bringup/radical-bringup.service"\n'
     printf 'default_target = "multi-user.target"\n'
     printf 'boot_marker = "radical.installer=1"\n\n'
 

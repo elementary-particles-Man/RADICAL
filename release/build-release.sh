@@ -44,6 +44,7 @@ collect_installer_entrypoint() {
 collect_bringup_entrypoint() {
   mkdir -p "$out_dir/bringup"
   install -m 0755 "$release_root/bringup/radical-bringup.sh" "$out_dir/bringup/radical-bringup.sh"
+  install -m 0644 "$release_root/bringup/radical-bringup.service" "$out_dir/bringup/radical-bringup.service"
   install -m 0644 "$release_root/bringup/README.md" "$out_dir/bringup/README.md"
 }
 

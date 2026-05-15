@@ -1,6 +1,6 @@
 use uefi::table::boot::{MemoryType, PAGE_SIZE};
 use crate::arch::x86_64::registers::{Cr3, EFER};
-use crate::drivers::framebuffer_console::FramebufferInfo;
+use crate::drivers::framebuffer_console::{self, FramebufferInfo};
 use crate::mm::memory;
 
 /// ページテーブルのエントリ属性
@@ -30,34 +30,32 @@ pub unsafe fn init_paging(framebuffer: Option<FramebufferInfo>) {
     let mut mapped_pages = 0u64;
     let mut writable_pages = 0u64;
     let mut mmio_pages = 0u64;
+    let mut skipped_pages = 0u64;
+    let mut skipped_regions = 0u64;
 
     for desc in memory::boot_memory_map() {
-        let flags = match desc.ty {
-            MemoryType::LOADER_CODE => CODE_MEMORY,
-            MemoryType::LOADER_DATA
-            | MemoryType::BOOT_SERVICES_CODE
-            | MemoryType::BOOT_SERVICES_DATA
-            | MemoryType::RUNTIME_SERVICES_CODE
-            | MemoryType::RUNTIME_SERVICES_DATA
-            | MemoryType::CONVENTIONAL => NORMAL_MEMORY,
-            MemoryType::ACPI_RECLAIM
-            | MemoryType::ACPI_NON_VOLATILE
-            | MemoryType::RESERVED
-            | MemoryType::UNUSABLE => READ_ONLY_MEMORY,
-            MemoryType::MMIO | MemoryType::MMIO_PORT_SPACE => MMIO_MEMORY,
-            _ => READ_ONLY_MEMORY,
-        };
-
         if desc.page_count == 0 {
             continue;
         }
+
+        let Some(flags) = paging_flags_for_memory_type(desc.ty) else {
+            skipped_pages += desc.page_count;
+            skipped_regions += 1;
+            serial_println!(
+                "=> Paging: skipped {:?} region at 0x{:x}, pages={} (not identity-mapped)",
+                desc.ty,
+                desc.phys_start,
+                desc.page_count
+            );
+            continue;
+        };
 
         map_range(pml4, desc.phys_start, desc.phys_start, desc.page_count, flags);
         mapped_pages += desc.page_count;
         if (flags & WRITABLE) != 0 {
             writable_pages += desc.page_count;
         }
-        if matches!(desc.ty, MemoryType::MMIO | MemoryType::MMIO_PORT_SPACE) {
+        if (flags & MMIO_MEMORY) == MMIO_MEMORY {
             mmio_pages += desc.page_count;
         }
     }
@@ -78,11 +76,37 @@ pub unsafe fn init_paging(framebuffer: Option<FramebufferInfo>) {
 
     Cr3::write(pml4_phys);
     serial_println!(
-        "=> Paging: mapped UEFI-described regions only (pages={} writable={} mmio={}); blind 4GB identity map disabled.",
+        "=> Paging: mapped UEFI-described regions only (mapped_pages={} writable={} mmio={} skipped_pages={} skipped_regions={}); blind 4GB identity map disabled.",
         mapped_pages,
         writable_pages,
-        mmio_pages
+        mmio_pages,
+        skipped_pages,
+        skipped_regions
     );
+    framebuffer_console::println(format_args!(
+        "PAGING: mapped={} writable={} mmio={} skipped={} regions={}",
+        mapped_pages,
+        writable_pages,
+        mmio_pages,
+        skipped_pages,
+        skipped_regions
+    ));
+}
+
+fn paging_flags_for_memory_type(memory_type: MemoryType) -> Option<u64> {
+    match memory_type {
+        MemoryType::LOADER_CODE => Some(CODE_MEMORY),
+        MemoryType::LOADER_DATA
+        | MemoryType::BOOT_SERVICES_CODE
+        | MemoryType::BOOT_SERVICES_DATA
+        | MemoryType::RUNTIME_SERVICES_CODE
+        | MemoryType::RUNTIME_SERVICES_DATA
+        | MemoryType::CONVENTIONAL => Some(NORMAL_MEMORY),
+        MemoryType::ACPI_RECLAIM | MemoryType::ACPI_NON_VOLATILE => Some(READ_ONLY_MEMORY),
+        MemoryType::MMIO | MemoryType::MMIO_PORT_SPACE => Some(MMIO_MEMORY),
+        MemoryType::RESERVED | MemoryType::UNUSABLE => None,
+        _ => Some(READ_ONLY_MEMORY),
+    }
 }
 
 unsafe fn enable_nx_bit() {
