@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 release_root="$script_dir"
 
-required_dirs=(kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO installer uninstaller)
+required_dirs=(kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO bringup installer uninstaller)
 forbidden_dirs=("tuff-""core" "tuff-""gpgpu" "kairo-""daemon" "TUFF-KAIRO/kairo-""daemon")
 
 failures=0
@@ -93,6 +93,20 @@ check_gpgpu_dependencies() {
   done
 }
 
+check_bringup_entrypoint() {
+  local script="$release_root/bringup/radical-bringup.sh"
+
+  if [[ -x "$script" ]]; then
+    pass "bring-up entrypoint is executable: release/bringup/radical-bringup.sh"
+  else
+    fail "bring-up entrypoint missing or not executable: release/bringup/radical-bringup.sh"
+  fi
+
+  bash -n "$script" || fail "bash syntax failed: release/bringup/radical-bringup.sh"
+  rg -n 'RADICAL Bring-up' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must list RADICAL Bring-up entrypoint"
+  rg -n 'script = "bringup/radical-bringup.sh"' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must wire radical-bringup.sh"
+}
+
 check_installer_entrypoint() {
   local script="$release_root/installer/radical-installer.sh"
   local service="$release_root/installer/radical-installer.service"
@@ -120,9 +134,57 @@ check_installer_entrypoint() {
   rg -n 'origin = "RADICAL"' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must state origin = \"RADICAL\""
 }
 
+check_boot_media_defaults() {
+  local repo_root
+  repo_root="$(cd -- "$release_root/.." && pwd)"
+
+  if rg -n 'LB_BOOTAPPEND_LIVE=.*radical\.installer=1.*systemd\.unit=multi-user\.target' "$repo_root/config/binary" >/dev/null; then
+    pass "live boot append defaults to RADICAL installer on multi-user.target"
+  else
+    fail "live boot append must default to radical.installer=1 and multi-user.target"
+  fi
+
+  if rg -n 'systemctl set-default multi-user.target' "$repo_root/config/hooks" >/dev/null \
+    && rg -n 'systemctl mask .*display-manager.service.*sddm.service' "$repo_root/config/hooks" >/dev/null; then
+    pass "KDE/SDDM display-manager default is disabled by live-build hooks"
+  else
+    fail "live-build hooks must set multi-user.target and mask display-manager/sddm"
+  fi
+
+  if rg -n 'RADICAL Bring-up|RADICAL Installer' "$repo_root/config/hooks" "$repo_root/config/binary" >/dev/null; then
+    pass "boot menu/config labels use RADICAL Bring-up or RADICAL Installer"
+  else
+    fail "boot menu/config labels must identify RADICAL Bring-up or RADICAL Installer"
+  fi
+}
+
+check_release_name_boundaries() {
+  local legacy_core="tuff-""core"
+  local legacy_gpgpu="tuff-""gpgpu"
+
+  if rg -n "$legacy_core" "$release_root" >/tmp/radical-core-legacy.txt 2>/dev/null; then
+    cat /tmp/radical-core-legacy.txt >&2
+    fail "TUFF core legacy name must be absent from RADICAL release"
+  else
+    pass "TUFF core legacy name absent from RADICAL release"
+  fi
+
+  if [[ -d "$release_root/rad-gpgpu" ]]; then
+    pass "rad-gpgpu directory exists"
+  else
+    fail "rad-gpgpu directory is required"
+  fi
+
+  if [[ -e "$release_root/$legacy_gpgpu" ]]; then
+    fail "legacy GPGPU directory must not exist in RADICAL release"
+  else
+    pass "legacy GPGPU directory absent"
+  fi
+}
+
 check_shell_syntax() {
   local script
-  for script in install.sh uninstall.sh build-release.sh generate-manifest.sh installer/radical-installer.sh; do
+  for script in install.sh uninstall.sh build-release.sh generate-manifest.sh bringup/radical-bringup.sh installer/radical-installer.sh; do
     if bash -n "$release_root/$script"; then
       pass "bash syntax: release/$script"
     else
@@ -152,7 +214,10 @@ main() {
   check_legacy_references
   check_rad_gpgpu_manifest
   check_gpgpu_dependencies
+  check_bringup_entrypoint
   check_installer_entrypoint
+  check_boot_media_defaults
+  check_release_name_boundaries
   check_shell_syntax
   cargo_check_if_present rad-gpgpu check
   cargo_check_if_present TUFF-KAIRO check --workspace

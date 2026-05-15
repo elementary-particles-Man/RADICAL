@@ -5,6 +5,9 @@
 ## Commands
 
 ```bash
+# Run the non-destructive real-hardware bring-up diagnostics.
+release/bringup/radical-bringup.sh
+
 # Install RADICAL into the default system locations.
 sudo release/install.sh
 
@@ -51,6 +54,7 @@ The required RADICAL release components are:
 - `TUFF-Xwin/`
 - `BOOT-RADICAL/`
 - `TUFF-KAIRO/`
+- `bringup/`
 - `installer/`
 - `uninstaller/`
 
@@ -59,3 +63,10 @@ The RADICAL GPGPU component directory and package name are both `rad-gpgpu`; its
 The legacy KAIRO background service package is deprecated and must not be installed, built, or listed by RADICAL release tooling.
 
 TUFF-OS PID1/core payloads are outside this RADICAL release boundary and must not be added to this install set.
+
+
+## Real-hardware bring-up default
+
+Generated live/carrier media must default to the `RADICAL Bring-up / RADICAL Installer` text path, not Debian KDE Plasma. The live-build hook sets `multi-user.target`, enables the RADICAL installer service, and masks `display-manager.service`/`sddm.service`; boot menu labels are rewritten to RADICAL Bring-up / RADICAL Installer. KDE or Plasma payloads may exist only as manual debug layers and are not the default boot path.
+
+`release/bringup/radical-bringup.sh` is diagnostics-first: it verifies the release, prints kernel/bootloader hashes, reports firmware mode, storage, GPU/framebuffer information, and refuses destructive installation unless `TARGET_DISK` is explicit and `RUN_INSTALL=1` is supplied.

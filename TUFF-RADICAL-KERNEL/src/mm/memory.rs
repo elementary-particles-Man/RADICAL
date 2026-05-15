@@ -1,6 +1,7 @@
 use uefi::table::boot::{MemoryAttribute, MemoryDescriptor, MemoryMap, MemoryType, PAGE_SIZE};
 use spin::Mutex;
 use crate::mm::allocator::{ALLOCATOR, HEAP_SIZE_BYTES};
+use crate::drivers::framebuffer_console;
 const MAX_MEMORY_DESCRIPTORS: usize = 512;
 const EMPTY_DESCRIPTOR: MemoryDescriptor = MemoryDescriptor {
     ty: MemoryType::RESERVED,
@@ -9,6 +10,15 @@ const EMPTY_DESCRIPTOR: MemoryDescriptor = MemoryDescriptor {
     page_count: 0,
     att: MemoryAttribute::empty(),
 };
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct MemoryMapSummary {
+    pub entries: usize,
+    pub usable_regions: usize,
+    pub usable_pages: u64,
+    pub reserved_regions: usize,
+    pub mmio_regions: usize,
+}
 
 pub struct PhysicalMemoryManager {
     pub current_descriptor_index: usize,
@@ -20,6 +30,7 @@ static PMM: Mutex<Option<PhysicalMemoryManager>> = Mutex::new(None);
 static mut BOOT_MEMORY_MAP: [MemoryDescriptor; MAX_MEMORY_DESCRIPTORS] =
     [EMPTY_DESCRIPTOR; MAX_MEMORY_DESCRIPTORS];
 static mut BOOT_MEMORY_MAP_LEN: usize = 0;
+static mut BOOT_MEMORY_SUMMARY: MemoryMapSummary = MemoryMapSummary { entries: 0, usable_regions: 0, usable_pages: 0, reserved_regions: 0, mmio_regions: 0 };
 
 impl PhysicalMemoryManager {
     fn allocate_page(&mut self) -> Option<u64> {
@@ -191,20 +202,55 @@ pub fn boot_memory_map() -> &'static [MemoryDescriptor] {
     unsafe { &BOOT_MEMORY_MAP[..BOOT_MEMORY_MAP_LEN] }
 }
 
+pub fn memory_map_summary() -> MemoryMapSummary {
+    unsafe { BOOT_MEMORY_SUMMARY }
+}
+
 pub fn inspect_memory_map() {
-    let mut usable_pages = 0;
+    let summary = summarize_memory_map();
+
+    unsafe { BOOT_MEMORY_SUMMARY = summary; }
+    framebuffer_console::set_boot_diagnostics(framebuffer_console::BootDiagnostics {
+        framebuffer: framebuffer_console::current_framebuffer(),
+        memory_map_entries: summary.entries,
+        usable_regions: summary.usable_regions,
+        reserved_regions: summary.reserved_regions,
+        mmio_regions: summary.mmio_regions,
+    });
+
+    serial_println!(
+        "TUFF-RADICAL-COMMANDER [MEM-01]: UEFI map entries={} usable_regions={} reserved_regions={} mmio_regions={} usable_pages={} (~{} MB)",
+        summary.entries,
+        summary.usable_regions,
+        summary.reserved_regions,
+        summary.mmio_regions,
+        summary.usable_pages,
+        (summary.usable_pages * PAGE_SIZE as u64) / (1024 * 1024)
+    );
+}
+
+fn summarize_memory_map() -> MemoryMapSummary {
+    let mut summary = MemoryMapSummary {
+        entries: boot_memory_map().len(),
+        ..MemoryMapSummary::default()
+    };
 
     for desc in boot_memory_map() {
-        if desc.ty == MemoryType::CONVENTIONAL {
-            usable_pages += desc.page_count;
+        match desc.ty {
+            MemoryType::CONVENTIONAL => {
+                summary.usable_regions += 1;
+                summary.usable_pages += desc.page_count;
+            }
+            MemoryType::MMIO | MemoryType::MMIO_PORT_SPACE => {
+                summary.mmio_regions += 1;
+            }
+            _ => {
+                summary.reserved_regions += 1;
+            }
         }
     }
 
-    serial_println!(
-        "TUFF-RADICAL-COMMANDER [MEM-01]: Physical Free Pool: {} pages (~{} MB)",
-        usable_pages,
-        (usable_pages * PAGE_SIZE as u64) / (1024 * 1024)
-    );
+    summary
 }
 
 fn snapshot_memory_map(memory_map: &MemoryMap<'static>) -> usize {

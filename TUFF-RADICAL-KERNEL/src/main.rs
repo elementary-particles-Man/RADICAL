@@ -7,6 +7,7 @@ extern crate alloc;
 use core::arch::asm;
 use uefi::prelude::*;
 use uefi::allocator::exit_boot_services;
+use uefi::proto::console::gop::{GraphicsOutput, PixelFormat};
 
 #[macro_use]
 mod drivers;
@@ -22,6 +23,7 @@ use crate::drivers::virtio_blk::VirtioBlk;
 use core::{future::Future, pin::Pin, task::{Context, Poll}};
 use core::sync::atomic::Ordering;
 use crate::drivers::pci::{PciAddress, PciBar};
+use crate::drivers::framebuffer_console::{self, BootDiagnostics, FramebufferInfo, FramebufferPixelFormat};
 use crate::arch::x86_64::{interrupts, cpu, gdt, apic, paging, syscall, user};
 use crate::mm::memory;
 use crate::compression::zram;
@@ -53,9 +55,13 @@ impl Future for SleepFuture {
 }
 
 #[entry]
-fn main(_image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
+fn main(image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
     unsafe { drivers::serial::COM1.lock().init(); }
     serial_println!("--- TUFF-RADICAL-KERNEL T-RAD REBIRTH (FINAL TUNE) ---");
+
+    let framebuffer = init_gop_framebuffer(image_handle, &system_table);
+    framebuffer_console::println(format_args!("RADICAL BRING-UP CONSOLE"));
+    framebuffer_console::println(format_args!("STAGE: UEFI GOP ONLINE"));
 
     serial_println!("TUFF-RADICAL-KERNEL: Requesting UEFI ExitBootServices handoff...");
     let (runtime_table, mut memory_map) = system_table.exit_boot_services();
@@ -66,7 +72,37 @@ fn main(_image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
     memory_map.sort();
     memory::init_memory(&memory_map);
     memory::inspect_memory_map();
-    unsafe { paging::init_paging(); }
+    let summary = memory::memory_map_summary();
+    framebuffer_console::set_boot_diagnostics(BootDiagnostics {
+        framebuffer,
+        memory_map_entries: summary.entries,
+        usable_regions: summary.usable_regions,
+        reserved_regions: summary.reserved_regions,
+        mmio_regions: summary.mmio_regions,
+    });
+    framebuffer_console::println(format_args!(
+        "STAGE: EXIT BOOT SERVICES OK"
+    ));
+    framebuffer_console::emit_boot_diagnostics_summary();
+    framebuffer_console::println(format_args!(
+        "UEFI MAP: ENTRIES={} USABLE={} RESERVED={} MMIO={}",
+        summary.entries,
+        summary.usable_regions,
+        summary.reserved_regions,
+        summary.mmio_regions
+    ));
+    if let Some(fb) = framebuffer {
+        framebuffer_console::println(format_args!(
+            "GOP: 0x{:x} {}B {}x{} STRIDE={} {}",
+            fb.base,
+            fb.size,
+            fb.width,
+            fb.height,
+            fb.stride,
+            fb.pixel_format.as_str()
+        ));
+    }
+    unsafe { paging::init_paging(framebuffer); }
     
     // CPU feature detection also wires the runtime SIMD state.
     let features = unsafe { cpu::init_simd() };
@@ -118,8 +154,70 @@ fn main(_image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
         serial_println!("TUFF-RADICAL-KERNEL: APIC timer routing pending. External IRQs stay masked; cooperative scheduler fallback active.");
     }
     serial_println!("TUFF-RADICAL-KERNEL: OS Tick Active. Entering Async Executor loop.");
+    framebuffer_console::println(format_args!("STAGE: EXECUTOR ONLINE"));
 
     executor.run();
+}
+
+fn init_gop_framebuffer(image_handle: Handle, system_table: &SystemTable<Boot>) -> Option<FramebufferInfo> {
+    let boot_services = system_table.boot_services();
+    let handle = match boot_services.get_handle_for_protocol::<GraphicsOutput>() {
+        Ok(handle) => handle,
+        Err(status) => {
+            serial_println!("TUFF-RADICAL-GOP: Graphics Output Protocol not found: {:?}", status.status());
+            return None;
+        }
+    };
+
+    let mut gop = match boot_services.open_protocol_exclusive::<GraphicsOutput>(handle) {
+        Ok(gop) => gop,
+        Err(status) => {
+            serial_println!("TUFF-RADICAL-GOP: unable to open GOP exclusively: {:?}", status.status());
+            return None;
+        }
+    };
+
+    let mode_info = gop.current_mode_info();
+    let (width, height) = mode_info.resolution();
+    let stride = mode_info.stride();
+    let pixel_format = match mode_info.pixel_format() {
+        PixelFormat::Rgb => FramebufferPixelFormat::Rgb,
+        PixelFormat::Bgr => FramebufferPixelFormat::Bgr,
+        PixelFormat::Bitmask => FramebufferPixelFormat::Bitmask,
+        PixelFormat::BltOnly => {
+            serial_println!("TUFF-RADICAL-GOP: current mode is BLT-only; framebuffer console disabled.");
+            return None;
+        }
+    };
+    let mut fb = gop.frame_buffer();
+    let info = FramebufferInfo {
+        base: fb.as_mut_ptr() as u64,
+        size: fb.size(),
+        width,
+        height,
+        stride,
+        pixel_format,
+    };
+
+    framebuffer_console::init(info);
+    framebuffer_console::set_boot_diagnostics(BootDiagnostics {
+        framebuffer: Some(info),
+        memory_map_entries: 0,
+        usable_regions: 0,
+        reserved_regions: 0,
+        mmio_regions: 0,
+    });
+    serial_println!(
+        "TUFF-RADICAL-GOP: framebuffer console online image={:?} base=0x{:x} size={} mode={}x{} stride={} format={}",
+        image_handle,
+        info.base,
+        info.size,
+        info.width,
+        info.height,
+        info.stride,
+        info.pixel_format.as_str()
+    );
+    Some(info)
 }
 
 async fn async_worker_module(thread_id: u32) {
@@ -171,6 +269,13 @@ async fn async_pcie_probe_and_init() {
         if bus % 32 == 0 { SleepFuture::new(1).await; }
     }
 
+    if storage_device.is_some() {
+        framebuffer_console::println(format_args!("STORAGE: VIRTIO-BLK DRIVER PRESENT"));
+    } else {
+        framebuffer_console::println(format_args!("STORAGE: VIRTIO/NVME/AHCI INSTALL DISABLED"));
+        serial_println!("TUFF-RADICAL-ASYNC [STORAGE]: VirtIO block not found; NVMe/AHCI drivers missing; install disabled.");
+    }
+
     if let Some(base) = gpu_mmio_base {
         serial_println!("TUFF-RADICAL-ASYNC [INIT]: GPU Active at 0x{:x}. Submitting Vulkan-compatible pipeline.", base);
         // Using a fixed physical address for the command buffer substrate in this test environment
@@ -182,7 +287,10 @@ async fn async_pcie_probe_and_init() {
     }
 
     if let Some(disk) = storage_device {
+        serial_println!("TUFF-RADICAL-ASYNC [STORAGE]: VirtIO block detected; install pipeline remains simulation-gated in bring-up mode.");
         async_install_task(disk).await;
+    } else {
+        serial_println!("TUFF-RADICAL-ASYNC [STORAGE]: No supported writable install target. Destructive install path is disabled.");
     }
 }
 
@@ -224,7 +332,8 @@ async fn async_cpu_simd_fallback_task() {
 }
 
 async fn async_install_task(disk: VirtioBlk) {
-    serial_println!("TUFF-RADICAL-ASYNC [INSTALL-TASK]: Beginning automated deployment...");
+    framebuffer_console::println(format_args!("INSTALL: VIRTIO SIMULATION ONLY"));
+    serial_println!("TUFF-RADICAL-ASYNC [INSTALL-TASK]: Beginning automated deployment simulation...");
     SleepFuture::new(30).await; 
     installer::run_install_pipeline(&disk);
     serial_println!("TUFF-RADICAL-ASYNC [INSTALL-TASK]: Deployment finalized. System ready.");
@@ -234,6 +343,7 @@ async fn async_install_task(disk: VirtioBlk) {
 fn panic(info: &core::panic::PanicInfo) -> ! {
     serial_println!("\n[!!!] TUFF-RADICAL-KERNEL T-RAD PANIC [!!!]");
     serial_println!("Nature: {}", info);
+    framebuffer_console::draw_panic_screen(format_args!("{}", info));
     serial_println!("System halted. The core remains pure.");
     loop { unsafe { asm!("hlt"); } }
 }

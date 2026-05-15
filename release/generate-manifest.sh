@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 release_root="$script_dir"
 manifest="$release_root/MANIFEST.generated.toml"
-components=(kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO installer uninstaller)
+components=(kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO bringup installer uninstaller)
 
 sha_for_component() {
   local component=$1
@@ -28,6 +28,13 @@ main() {
     printf 'origin = "RADICAL"\n'
     printf 'schema_version = 1\n\n'
     local component
+    printf '[[bringup_entrypoint]]\n'
+    printf 'name = "RADICAL Bring-up"\n'
+    printf 'origin = "RADICAL"\n'
+    printf 'script = "bringup/radical-bringup.sh"\n'
+    printf 'default_target = "multi-user.target"\n'
+    printf 'boot_marker = "radical.installer=1"\n\n'
+
     printf '[[installer_entrypoint]]\n'
     printf 'name = "RADICAL Installer"\n'
     printf 'origin = "RADICAL"\n'

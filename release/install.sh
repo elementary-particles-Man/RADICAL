@@ -10,7 +10,7 @@ SYSCONFDIR="${SYSCONFDIR:-/etc/radical}"
 STATE_DIR="${STATE_DIR:-/var/lib/radical}"
 DRY_RUN="${DRY_RUN:-0}"
 
-components=(kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO installer uninstaller)
+components=(kernel rad-gpgpu TUFF-Xwin BOOT-RADICAL TUFF-KAIRO bringup installer uninstaller)
 launcher_record="$DESTDIR/.radical-launchers"
 
 run() {

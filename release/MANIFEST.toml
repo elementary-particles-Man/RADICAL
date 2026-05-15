@@ -33,6 +33,11 @@ path = "TUFF-KAIRO/"
 required = true
 
 [[component]]
+name = "bringup"
+path = "bringup/"
+required = true
+
+[[component]]
 name = "installer"
 path = "installer/"
 required = true
@@ -41,6 +46,13 @@ required = true
 name = "uninstaller"
 path = "uninstaller/"
 required = true
+
+[[bringup_entrypoint]]
+name = "RADICAL Bring-up"
+origin = "RADICAL"
+script = "bringup/radical-bringup.sh"
+default_target = "multi-user.target"
+boot_marker = "radical.installer=1"
 
 [[installer_entrypoint]]
 name = "RADICAL Installer"
