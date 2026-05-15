@@ -66,9 +66,7 @@ unsafe extern "C" fn syscall_entry() {
 }
 
 #[no_mangle]
-
-#[no_mangle]
-extern "C" fn handle_syscall(id: u64, arg1: u64) {
+extern "C" fn handle_syscall(_id: u64, _arg1: u64) {
     // Direct Port I/O bypass to avoid spinlock deadlocks during syscall
     unsafe {
         let s = b"TUFF-RADICAL-SYSCALL: TRAP SUCCESS

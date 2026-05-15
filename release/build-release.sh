@@ -41,6 +41,12 @@ collect_installer_entrypoint() {
   install -m 0644 "$release_root/installer/radical-installer.service" "$out_dir/installer/radical-installer.service"
 }
 
+collect_bringup_entrypoint() {
+  mkdir -p "$out_dir/bringup"
+  install -m 0755 "$release_root/bringup/radical-bringup.sh" "$out_dir/bringup/radical-bringup.sh"
+  install -m 0644 "$release_root/bringup/README.md" "$out_dir/bringup/README.md"
+}
+
 generate_checksums() {
   mkdir -p "$out_dir"
   : > "$out_dir/SHA256SUMS"
@@ -62,6 +68,7 @@ main() {
     collect_artifacts "$component"
   done
   collect_installer_entrypoint
+  collect_bringup_entrypoint
   generate_checksums
   echo "RADICAL release build completed."
 }
