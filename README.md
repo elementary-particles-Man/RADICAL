@@ -22,3 +22,22 @@ cargo build
 
 - Build artifacts and QEMU logs are intentionally git-ignored.
 - This codebase is experimental and oriented toward low-level prototyping rather than production deployment.
+
+## RADICAL release install unit
+
+The lowercase `release/` directory is the canonical RADICAL distribution and install root. Do not use a parallel `Release/` tree.
+
+Common commands:
+
+```bash
+sudo release/install.sh
+sudo release/uninstall.sh
+release/verify-release.sh
+release/build-release.sh
+release/generate-manifest.sh
+```
+
+`release/install.sh` supports `DESTDIR` (default `/opt/radical`), `BINDIR` (default `/usr/local/bin`), `SYSCONFDIR` (default `/etc/radical`), and `STATE_DIR` (default `/var/lib/radical`). The matching `release/uninstall.sh` preserves `SYSCONFDIR` and `STATE_DIR` unless `PURGE=1` is explicitly set.
+
+`kairo-daemon` is deprecated and must not be installed, built, or listed in the RADICAL release manifest. `tuff-core` is TUFF-OS PID1/core scope and is not part of the RADICAL release install set. The RADICAL GPGPU component is `rad-gpgpu`, while its Rust library crate name remains `tuff_gpgpu` for source compatibility.
+

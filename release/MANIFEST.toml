@@ -1,0 +1,43 @@
+# RADICAL release manifest.
+# This hand-authored manifest declares the canonical installable component set.
+
+origin = "RADICAL"
+schema_version = 1
+
+[[component]]
+name = "kernel"
+path = "kernel/"
+required = true
+
+[[component]]
+name = "rad-gpgpu"
+path = "rad-gpgpu/"
+required = true
+rust_package = "rad-gpgpu"
+rust_lib = "tuff_gpgpu"
+note = "The RADICAL GPGPU package exports the tuff_gpgpu Rust library name for source compatibility."
+
+[[component]]
+name = "TUFF-Xwin"
+path = "TUFF-Xwin/"
+required = true
+
+[[component]]
+name = "BOOT-RADICAL"
+path = "BOOT-RADICAL/"
+required = true
+
+[[component]]
+name = "TUFF-KAIRO"
+path = "TUFF-KAIRO/"
+required = true
+
+[[component]]
+name = "installer"
+path = "installer/"
+required = true
+
+[[component]]
+name = "uninstaller"
+path = "uninstaller/"
+required = true

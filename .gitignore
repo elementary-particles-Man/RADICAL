@@ -17,3 +17,6 @@ DietPi_x86_64.7z
 *.c32
 *.pf2
 projects/TUFF-RADICAL-LIVE/
+/release/*/target/
+/release/out/
+/release/MANIFEST.generated.toml

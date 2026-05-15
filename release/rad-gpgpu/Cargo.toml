@@ -1,0 +1,10 @@
+[package]
+name = "rad-gpgpu"
+version = "0.1.0"
+edition = "2021"
+description = "RADICAL GPGPU substrate package exporting the tuff_gpgpu Rust library name."
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "tuff_gpgpu"
+path = "src/lib.rs"
