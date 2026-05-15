@@ -1,0 +1,5 @@
+[Applets][SystemTray]
+# TUFF-RADICAL: Surgical Tray Layout
+# Only Volume (org.kde.plasma.volume) and Mozc (fcitx5-mozc) are shown.
+extraItems=org.kde.plasma.networkmanagement,org.kde.plasma.bluetooth,org.kde.plasma.battery,org.kde.plasma.brightnesstrol,org.kde.plasma.devicenotifier,org.kde.plasma.clipboard,org.kde.plasma.mediacontroller,org.kde.plasma.notifications
+shownItems=org.kde.plasma.volume,org.kde.plasma.mozc,fcitx5-mozc-item

@@ -1,0 +1,10 @@
+# TUFF-RADICAL: Surgical GRUB Configuration
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=1
+GRUB_DISTRIBUTOR="RADICAL"
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash pcie_aspm=off pci=noaer random.trust_cpu=on amd_pstate=active"
+GRUB_CMDLINE_LINUX=""
+
+# Disable OS Prober for speed, we only want RADICAL
+GRUB_DISABLE_OS_PROBER=true
+GRUB_TERMINAL=console
