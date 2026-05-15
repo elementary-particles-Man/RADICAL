@@ -52,7 +52,6 @@ rfkill
 bluetooth
 bluez
 bluez-obexd
-bluedevil
 
 # Support tools & Hardware Enablement
 pciutils
@@ -91,27 +90,17 @@ wireplumber
 libspa-0.2-bluetooth
 alsa-utils
 
-# KDE Plasma userland over TUFF-Xwin
+# RADICAL installer carrier userland (no KDE/Plasma/SDDM default session)
 dbus-user-session
 libxkbcommon0
 mesa-vulkan-drivers
 vulkan-tools
-kde-plasma-desktop
-konsole
-dolphin
-plasma-nm
-plasma-pa
-systemsettings
-xdg-desktop-portal-kde
 polkitd
 
 # Live System Support
 live-boot
 live-config
 live-config-systemd
-calamares
-calamares-settings-debian
-debian-installer-launcher
 
 # Locale & Input (Japanese)
 locales
@@ -121,8 +110,6 @@ fonts-noto-cjk-extra
 fcitx5
 fcitx5-mozc
 fcitx5-frontend-all
-kde-config-fcitx5
-libpam-kwallet5
 
 # Web Browsers
 firefox-esr

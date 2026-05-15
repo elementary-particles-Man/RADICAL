@@ -1,0 +1,23 @@
+[Unit]
+Description=RADICAL Installer
+Documentation=file:/opt/radical/release/installer/README.md
+After=systemd-user-sessions.service live-config.service
+Wants=systemd-user-sessions.service
+Conflicts=display-manager.service sddm.service
+ConditionPathExists=/usr/local/sbin/radical-installer
+
+[Service]
+Type=simple
+Environment=RADICAL_INSTALLER_MEDIA=1
+WorkingDirectory=/opt/radical/release
+ExecStart=/usr/local/sbin/radical-installer
+StandardInput=tty-force
+StandardOutput=tty
+StandardError=journal+console
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

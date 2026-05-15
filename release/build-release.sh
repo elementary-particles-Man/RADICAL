@@ -35,6 +35,12 @@ collect_artifacts() {
   done < <(find "$dir/target/release" -maxdepth 2 -type f \( -perm -111 -o -name '*.rlib' -o -name '*.so' -o -name '*.a' \) -print0 2>/dev/null)
 }
 
+collect_installer_entrypoint() {
+  mkdir -p "$out_dir/installer"
+  install -m 0755 "$release_root/installer/radical-installer.sh" "$out_dir/installer/radical-installer.sh"
+  install -m 0644 "$release_root/installer/radical-installer.service" "$out_dir/installer/radical-installer.service"
+}
+
 generate_checksums() {
   mkdir -p "$out_dir"
   : > "$out_dir/SHA256SUMS"
@@ -55,6 +61,7 @@ main() {
   for component in "${components[@]}"; do
     collect_artifacts "$component"
   done
+  collect_installer_entrypoint
   generate_checksums
   echo "RADICAL release build completed."
 }

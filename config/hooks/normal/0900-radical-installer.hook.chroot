@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+systemctl set-default multi-user.target
+systemctl enable radical-installer.service
+systemctl mask display-manager.service sddm.service || true
