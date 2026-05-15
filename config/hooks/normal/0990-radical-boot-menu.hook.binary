@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+patch_file() {
+    file="$1"
+    [ -f "$file" ] || return 0
+    sed -i \
+        -e 's/Debian GNU\/Linux Live/RADICAL Installer/g' \
+        -e 's/Debian Live/RADICAL Installer/g' \
+        -e 's/Live system/RADICAL Installer/g' \
+        -e 's/Start installer/RADICAL Installer/g' \
+        -e 's/Graphical install/RADICAL Installer/g' \
+        "$file"
+    if grep -q 'boot=live' "$file" && ! grep -q 'radical.installer=1' "$file"; then
+        sed -i 's/boot=live/boot=live radical.installer=1 systemd.unit=multi-user.target/g' "$file"
+    fi
+}
+
+find binary -type f \
+    \( -path '*/isolinux/*.cfg' -o -path '*/syslinux/*.cfg' -o -path '*/boot/grub/*.cfg' -o -name 'grub.cfg' \) \
+    -print | while IFS= read -r cfg; do
+    patch_file "$cfg"
+done

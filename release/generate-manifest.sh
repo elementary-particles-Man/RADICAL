@@ -28,6 +28,15 @@ main() {
     printf 'origin = "RADICAL"\n'
     printf 'schema_version = 1\n\n'
     local component
+    printf '[[installer_entrypoint]]\n'
+    printf 'name = "RADICAL Installer"\n'
+    printf 'origin = "RADICAL"\n'
+    printf 'script = "installer/radical-installer.sh"\n'
+    printf 'service = "installer/radical-installer.service"\n'
+    printf 'backend = "install.sh"\n'
+    printf 'default_target = "multi-user.target"\n'
+    printf 'boot_marker = "radical.installer=1"\n\n'
+
     for component in "${components[@]}"; do
       printf '[[component]]\n'
       printf 'name = "%s"\n' "$component"

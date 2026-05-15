@@ -93,9 +93,36 @@ check_gpgpu_dependencies() {
   done
 }
 
+check_installer_entrypoint() {
+  local script="$release_root/installer/radical-installer.sh"
+  local service="$release_root/installer/radical-installer.service"
+
+  if [[ -x "$script" ]]; then
+    pass "installer entrypoint is executable: release/installer/radical-installer.sh"
+  else
+    fail "installer entrypoint missing or not executable: release/installer/radical-installer.sh"
+  fi
+
+  if [[ -f "$service" ]]; then
+    pass "installer service exists: release/installer/radical-installer.service"
+  else
+    fail "installer service missing: release/installer/radical-installer.service"
+  fi
+
+  rg -n 'ExecStart=/usr/local/sbin/radical-installer' "$service" >/dev/null || fail "installer service must launch radical-installer"
+  rg -n 'WantedBy=multi-user.target' "$service" >/dev/null || fail "installer service must be wanted by multi-user.target"
+  if rg -n 'graphical.target' "$service" >/dev/null; then
+    fail "installer service must not require graphical.target"
+  else
+    pass "installer service does not require graphical.target"
+  fi
+  rg -n 'RADICAL Installer' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must list RADICAL Installer entrypoint"
+  rg -n 'origin = "RADICAL"' "$release_root/MANIFEST.toml" >/dev/null || fail "manifest must state origin = \"RADICAL\""
+}
+
 check_shell_syntax() {
   local script
-  for script in install.sh uninstall.sh build-release.sh generate-manifest.sh; do
+  for script in install.sh uninstall.sh build-release.sh generate-manifest.sh installer/radical-installer.sh; do
     if bash -n "$release_root/$script"; then
       pass "bash syntax: release/$script"
     else
@@ -125,6 +152,7 @@ main() {
   check_legacy_references
   check_rad_gpgpu_manifest
   check_gpgpu_dependencies
+  check_installer_entrypoint
   check_shell_syntax
   cargo_check_if_present rad-gpgpu check
   cargo_check_if_present TUFF-KAIRO check --workspace

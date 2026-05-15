@@ -41,3 +41,12 @@ required = true
 name = "uninstaller"
 path = "uninstaller/"
 required = true
+
+[[installer_entrypoint]]
+name = "RADICAL Installer"
+origin = "RADICAL"
+script = "installer/radical-installer.sh"
+service = "installer/radical-installer.service"
+backend = "install.sh"
+default_target = "multi-user.target"
+boot_marker = "radical.installer=1"
