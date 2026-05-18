@@ -16,6 +16,7 @@ mod mm;
 mod compression;
 mod task;
 mod installer;
+mod kernel_security;
 
 use task::{Task, executor::Executor};
 use crate::drivers::gpu::{GpuCommandRing, GopInfo, SCREEN_LOGGER};
@@ -77,6 +78,8 @@ fn main(_image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         });
 
     serial_println!("--- RADICAL-KERNEL REBIRTH (FINAL TUNE) ---");
+
+    kernel_security::assert_secret_fd_boundary_sealed();
 
     serial_println!("RADICAL-KERNEL: Requesting UEFI ExitBootServices handoff...");
     let (runtime_table, mut memory_map) = system_table.exit_boot_services();
