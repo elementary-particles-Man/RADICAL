@@ -1,0 +1,30 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+--- TUFF-KERNEL T-RAD REBIRTH (FINAL TUNE) ---
+TUFF-COMMANDER [MEM-02]: Asserting T-RADty over Memory...
+=> PMM: Largest region at 0x1780000 (108398 pages)
+=> Heap: 32MB T-RAD Heap established.
+TUFF-COMMANDER [PAG-OPT]: Enhancing Memory Security (NX-Bit Enforce)...
+=> Paging: 4GB Identity mapped with NX-Protection active.
+TUFF-COMMANDER [CPU-01]: Feature Detection Result:
+  AVX:      SUPPORTED
+  AVX2:     SUPPORTED
+  AVX-512F: MISSING
+  VAES:     SUPPORTED
+  RDRAND:   SUPPORTED
+TUFF-COMMANDER [GPU-01]: Directly taking control of Framebuffer at 0x80000000
+=> Raw Framebuffer partial fill completed. Red Alert established.
+TUFF-KERNEL: Asserting absolute control over CPU (GDT/IDT)...
+TUFF-KERNEL: GPU Active at 0x80000000. Submitting non-blocking compute.
+TUFF-COMMANDER [GPU-02]: Establishing Command Ring at MMIO 0x80000000
+TUFF-KERNEL: T-RAD Executive Stable. Releasing Interrupt Seals...
+TUFF-KERNEL: OS Tick Active. Entering Async Executor loop.
+TUFF-ASYNC: CPU-T-RAD mode active.
+TUFF-ASYNC: Initializing Vulkan-compatible Command Submission...
+TUFF-ASYNC: 10 Ticks passed. Submitting compute shader to GPU.
+TUFF-COMMANDER [GPU-03]: Compute Command submitted (Shader: 28927, Data: 0x3000000). Doorbell rung.
+TUFF-ASYNC [CPU-TASK]: Heartbeat. OS Tick: 52
+TUFF-ASYNC [CPU-TASK]: Heartbeat. OS Tick: 102
+TUFF-ASYNC [CPU-TASK]: Heartbeat. OS Tick: 152
+TUFF-ASYNC [CPU-TASK]: Heartbeat. OS Tick: 202
+TUFF-ASYNC [CPU-TASK]: Heartbeat. OS Tick: 252

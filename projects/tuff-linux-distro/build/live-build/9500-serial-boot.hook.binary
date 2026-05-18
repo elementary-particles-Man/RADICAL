@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+
+ISOLINUX_CFG="binary/isolinux/isolinux.cfg"
+GRUB_CFG="binary/boot/grub/config.cfg"
+
+if [ -f "${ISOLINUX_CFG}" ]; then
+    tmp="$(mktemp)"
+    awk '
+        BEGIN {
+            print "serial 0 115200"
+            print "console 0"
+            print "default live-amd64"
+            print "prompt 0"
+            print "timeout 50"
+        }
+        /^default / { next }
+        /^prompt / { next }
+        /^timeout / { next }
+        { print }
+    ' "${ISOLINUX_CFG}" > "${tmp}"
+    mv "${tmp}" "${ISOLINUX_CFG}"
+fi
+
+if [ -f "${GRUB_CFG}" ]; then
+    tmp="$(mktemp)"
+    awk '
+        BEGIN {
+            print "set timeout=5"
+            print "serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"
+            print "terminal_input console serial"
+        }
+        /^set timeout=/ { next }
+        /^terminal_output / { print "terminal_output console serial"; next }
+        { print }
+    ' "${GRUB_CFG}" > "${tmp}"
+    mv "${tmp}" "${GRUB_CFG}"
+fi

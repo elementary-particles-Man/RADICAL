@@ -1,0 +1,20 @@
+Building TUFF-KERNEL...
+warning: unused variable: `base`
+  --> src/main.rs:78:25
+   |
+78 |                     let base = (id_reg as u64) & !0xF; // 簡易。本来はBAR0読み取り
+   |                         ^^^^ help: if this is intentional, prefix it with an underscore: `_base`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `inspect_memory_map` is never used
+  --> src/memory.rs:76:8
+   |
+76 | pub fn inspect_memory_map(system_table: &SystemTable<Boot>) {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tuff-kernel` (bin "tuff-kernel") generated 2 warnings (run `cargo fix --bin "tuff-kernel" -p tuff-kernel` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+Starting QEMU...
